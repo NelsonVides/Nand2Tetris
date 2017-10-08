@@ -1,0 +1,50 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/05/Memory.hdl
+
+/**
+ * The complete address space of the Hack computer's memory,
+ * including RAM and memory-mapped I/O. 
+ * The chip facilitates read and write operations, as follows:
+ *     Read:  out(t) = Memory[address(t)](t)
+ *     Write: if load(t-1) then Memory[address(t-1)](t) = in(t-1)
+ * In words: the chip always outputs the value stored at the memory 
+ * location specified by address. If load==1, the in value is loaded 
+ * into the memory location specified by address. This value becomes 
+ * available through the out output from the next time step onward.
+ * Address space rules:
+ * Only the upper 16K+8K+1 words of the Memory chip are used. 
+ * Access to address>0x6000 is invalid. Access to any address in 
+ * the range 0x4000-0x5FFF results in accessing the screen memory 
+ * map. Access to address 0x6000 results in accessing the keyboard 
+ * memory map. The behavior in these addresses is described in the 
+ * Screen and Keyboard chip specifications given in the book.
+ */
+
+CHIP Memory {
+    IN in[16], load, address[15];
+    OUT out[16];
+
+    PARTS:
+    // so one RAM16K, two RAM4K, and one register. And plenty of Muxes
+  	DMux4Way(in=load, sel=address[13..14], a=loadRAM, b=loadSCR1, c=loadSCR2, d=loadKB);
+  	//DMux(in=load, sel=address[14], a=loadRAM, b=loadIO);
+    
+        // First the RAM with addresses on 0-16383,
+        // that is, 000000000000000 to 011111111111111 =>
+    RAM16K(in=in, load=loadRAM, address=address[0..13], out=outRAM);
+    //RAM16K(in=in, load=loadIO, address=address[0..13], out=outIO);
+    
+        // Then the screen with addresses 16384-24575,
+        // that is, 000000000000000 to 011111111111111 =>
+    RAM4K(in=in, load=loadSCR1, address=address[0..11], out=outSCR1);
+    RAM4K(in=in, load=loadSCR2, address=address[0..11], out=outSCR2);
+        
+        // And last the keyboard register with address 25576
+        // that is, 000000000000000 to 011111111111111 =>
+    Register(in=in, load=loadKB, out=outKB);
+	
+    Mux4Way16(a=outRAM, b=outSCR1, c=outSCR2, d=outKB, sel=address[13..14], out=out);
+    //Mux16(a=outRAM, b=outIO, sel=loadRAM, out=out);
+}
